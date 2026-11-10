@@ -4,7 +4,7 @@ const Application =
     require("../models/Application");
 
 const Job =
-    require("../models/Job");
+    require("../models/job");
 
 const User =
     require("../models/User");
