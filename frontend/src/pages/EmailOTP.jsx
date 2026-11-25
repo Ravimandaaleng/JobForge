@@ -12,8 +12,10 @@ function EmailOTP() {
 
 
     // Email passed from Register page
-    const email =
-        location.state?.email || "";
+   const email =
+    location.state?.email ||
+    sessionStorage.getItem("verificationEmail") ||
+    "";
 
 
     const [otp, setOtp] = useState("");
