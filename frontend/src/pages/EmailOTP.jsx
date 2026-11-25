@@ -1,370 +1,194 @@
+
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
 import api from "../api/axios";
 
-
-function EmailOTP() {
-
+const EmailOTP = () => {
+    const location = useLocation();
     const navigate = useNavigate();
 
-    const location = useLocation();
-
-
-    // Email passed from Register page
-   const email =
-    location.state?.email ||
-    sessionStorage.getItem("verificationEmail") ||
-    "";
-
+    // Get email from navigation state or sessionStorage
+    const email =
+        location.state?.email ||
+        sessionStorage.getItem("verificationEmail") ||
+        "";
 
     const [otp, setOtp] = useState("");
-
+    const [loading, setLoading] = useState(false);
+    const [resending, setResending] = useState(false);
     const [message, setMessage] = useState("");
-
     const [error, setError] = useState("");
 
-    const [loading, setLoading] = useState(false);
-
-    const [resending, setResending] = useState(false);
-
-
-    // ========================================
-    // VERIFY OTP
-    // ========================================
-
+    // Verify OTP
     const handleVerifyOTP = async (e) => {
-
         e.preventDefault();
 
-
-        setMessage("");
-
         setError("");
-
-
-        if (!otp) {
-
-            setError("Please enter the OTP.");
-
-            return;
-
-        }
-
-
-        if (otp.length !== 6) {
-
-            setError("OTP must be 6 digits.");
-
-            return;
-
-        }
-
-
-        try {
-
-            setLoading(true);
-
-
-            const response =
-                await api.post(
-                    "/auth/verify-email-otp",
-                    {
-                        email,
-                        otp
-                    }
-                );
-
-
-            setMessage(
-                response.data.message
-            );
-
-
-            // Go to login after successful verification
-            setTimeout(() => {
-
-                navigate("/login");
-
-            }, 1500);
-
-
-        } catch (error) {
-
-            setError(
-
-                error.response?.data?.message ||
-                "OTP verification failed."
-
-            );
-
-        } finally {
-
-            setLoading(false);
-
-        }
-
-    };
-
-
-    // ========================================
-    // RESEND OTP
-    // ========================================
-
-    const handleResendOTP = async () => {
-
         setMessage("");
-
-        setError("");
-
 
         if (!email) {
-
-            setError(
-                "Email address is missing. Please register again."
-            );
-
+            setError("Email address is missing. Please register again.");
             return;
-
         }
 
+        if (!/^\d{6}$/.test(otp)) {
+            setError("Please enter a valid 6-digit OTP.");
+            return;
+        }
 
         try {
+            setLoading(true);
 
-            setResending(true);
-
-
-            const response =
-                await api.post(
-                    "/auth/resend-email-otp",
-                    {
-                        email
-                    }
-                );
-
+            const response = await api.post(
+                "/auth/verify-email-otp",
+                {
+                    email: email.trim().toLowerCase(),
+                    otp: otp
+                }
+            );
 
             setMessage(
-                response.data.message
+                response.data.message ||
+                "Email verified successfully!"
             );
 
+            // Clear stored email after successful verification
+            sessionStorage.removeItem("verificationEmail");
 
-        } catch (error) {
+            setTimeout(() => {
+                navigate("/login");
+            }, 1500);
 
+        } catch (err) {
             setError(
-
-                error.response?.data?.message ||
-                "Could not resend OTP."
-
+                err.response?.data?.message ||
+                "OTP verification failed. Please try again."
             );
-
         } finally {
-
-            setResending(false);
-
+            setLoading(false);
         }
-
     };
 
+    // Resend OTP
+    const handleResendOTP = async () => {
+        setError("");
+        setMessage("");
 
-    // ========================================
-    // NO EMAIL
-    // ========================================
+        if (!email) {
+            setError("Email address is missing. Please register again.");
+            return;
+        }
 
-    if (!email) {
+        try {
+            setResending(true);
 
-        return (
+            const response = await api.post(
+                "/auth/resend-email-otp",
+                {
+                    email: email.trim().toLowerCase()
+                }
+            );
 
-            <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            setMessage(
+                response.data.message ||
+                "A new OTP has been sent to your email."
+            );
 
-                <div className="bg-white p-8 rounded-xl shadow-md text-center">
-
-                    <h2 className="text-2xl font-bold mb-4">
-                        Email Verification
-                    </h2>
-
-                    <p className="text-gray-600 mb-6">
-                        Email address is missing.
-                    </p>
-
-                    <button
-                        onClick={() =>
-                            navigate("/register")
-                        }
-                        className="bg-blue-600 text-white px-5 py-2 rounded-lg"
-                    >
-                        Back to Register
-                    </button>
-
-                </div>
-
-            </div>
-
-        );
-
-    }
-
-
-    // ========================================
-    // OTP PAGE
-    // ========================================
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                "Unable to resend OTP. Please try again."
+            );
+        } finally {
+            setResending(false);
+        }
+    };
 
     return (
-
         <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
 
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+            <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
 
+                <h2 className="text-2xl font-bold text-center text-gray-800 mb-3">
+                    Verify Your Email
+                </h2>
 
-                {/* HEADER */}
+                <p className="text-center text-gray-600 mb-6">
+                    Enter the 6-digit OTP sent to
+                </p>
 
-                <div className="text-center mb-8">
+                <p className="text-center font-semibold text-blue-600 mb-6 break-all">
+                    {email || "Email not found"}
+                </p>
 
-                    <h1 className="text-3xl font-bold text-gray-800">
-                        Verify Your Email
-                    </h1>
-
-                    <p className="text-gray-500 mt-3">
-                        We sent a 6-digit OTP to
-                    </p>
-
-                    <p className="font-semibold text-blue-600 mt-1">
-                        {email}
-                    </p>
-
-                </div>
-
-
-                {/* FORM */}
-
-                <form
-                    onSubmit={handleVerifyOTP}
-                    className="space-y-5"
-                >
-
-                    <div>
-
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Enter OTP
-                        </label>
-
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength="6"
-                            value={otp}
-                            onChange={(e) => {
-
-                                const value =
-                                    e.target.value.replace(
-                                        /\D/g,
-                                        ""
-                                    );
-
-                                setOtp(value);
-
-                            }}
-                            placeholder="Enter 6-digit OTP"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-
+                {error && (
+                    <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">
+                        {error}
                     </div>
+                )}
 
+                {message && (
+                    <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4 text-sm">
+                        {message}
+                    </div>
+                )}
 
-                    {/* SUCCESS MESSAGE */}
+                <form onSubmit={handleVerifyOTP}>
 
-                    {message && (
-
-                        <div className="p-3 rounded-lg bg-green-100 text-green-700 text-sm text-center">
-
-                            {message}
-
-                        </div>
-
-                    )}
-
-
-                    {/* ERROR MESSAGE */}
-
-                    {error && (
-
-                        <div className="p-3 rounded-lg bg-red-100 text-red-700 text-sm text-center">
-
-                            {error}
-
-                        </div>
-
-                    )}
-
-
-                    {/* VERIFY BUTTON */}
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder="Enter 6-digit OTP"
+                        value={otp}
+                        onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            setOtp(value);
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-xl tracking-widest outline-none focus:ring-2 focus:ring-blue-500 mb-5"
+                    />
 
                     <button
                         type="submit"
-                        disabled={
-                            loading ||
-                            otp.length !== 6
-                        }
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition"
+                        disabled={loading || !email}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50"
                     >
-
-                        {loading
-                            ? "Verifying..."
-                            : "Verify OTP"}
-
+                        {loading ? "Verifying..." : "Verify Email"}
                     </button>
 
                 </form>
 
-
-                {/* RESEND */}
-
                 <div className="text-center mt-6">
 
-                    <p className="text-gray-500 text-sm mb-2">
+                    <p className="text-gray-600 text-sm mb-3">
                         Didn't receive the OTP?
                     </p>
 
                     <button
                         type="button"
                         onClick={handleResendOTP}
-                        disabled={resending}
-                        className="text-blue-600 hover:text-blue-800 font-semibold disabled:text-gray-400"
+                        disabled={resending || !email}
+                        className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
                     >
-
-                        {resending
-                            ? "Sending..."
-                            : "Resend OTP"}
-
+                        {resending ? "Sending..." : "Resend OTP"}
                     </button>
 
                 </div>
 
-
-                {/* LOGIN */}
-
                 <div className="text-center mt-6">
-
                     <button
                         type="button"
-                        onClick={() =>
-                            navigate("/login")
-                        }
-                        className="text-gray-500 hover:text-gray-700 text-sm"
+                        onClick={() => navigate("/register")}
+                        className="text-gray-500 text-sm hover:text-blue-600"
                     >
-
-                        Back to Login
-
+                        Back to Register
                     </button>
-
                 </div>
 
             </div>
-
         </div>
-
     );
-
-}
-
+};
 
 export default EmailOTP;

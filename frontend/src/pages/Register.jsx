@@ -41,13 +41,17 @@ function Register() {
             );
 
             // Pass the email entered by the user
-            const registeredEmail = formData.email.trim().toLowerCase();
+            const normalizedEmail = formData.email.trim().toLowerCase();
 
-            navigate("/verify-email-otp", {
-                state: {
-                    email: registeredEmail
-                }
-            });
+// Save email so it survives page refresh
+sessionStorage.setItem("verificationEmail", normalizedEmail);
+
+// Navigate to OTP page
+navigate("/verify-email-otp", {
+  state: {
+    email: normalizedEmail
+  }
+});
 
         } catch (error) {
             setMessage(
