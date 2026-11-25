@@ -70,7 +70,7 @@ const io =
         cors: {
 
             origin:
-                "http://localhost:5173",
+                "https://jobforge-3.onrender.com/",
 
             methods: [
                 "GET",
