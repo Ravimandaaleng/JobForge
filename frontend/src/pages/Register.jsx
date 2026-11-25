@@ -1,10 +1,9 @@
+
 import { useState } from "react";
 import api from "../api/axios";
 import { Link, useNavigate } from "react-router-dom";
 
-
 function Register() {
-
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -13,122 +12,66 @@ function Register() {
         role: "student"
     });
 
-
     const [message, setMessage] = useState("");
-
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
 
-
-    // ========================================
-    // HANDLE INPUT CHANGE
-    // ========================================
-
     const handleChange = (e) => {
-
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
         });
-
     };
 
-
-    // ========================================
-    // HANDLE REGISTER
-    // ========================================
-
     const handleSubmit = async (e) => {
-
         e.preventDefault();
 
         setMessage("");
-
         setLoading(true);
 
-
         try {
-
             const response = await api.post(
                 "/auth/register",
                 formData
             );
 
-
             setMessage(
-                response.data.message
+                response.data.message || "Registration successful!"
             );
 
+            // Pass the email entered by the user
+            const registeredEmail = formData.email.trim().toLowerCase();
 
-            // ==================================
-            // GO TO EMAIL OTP PAGE
-            // ==================================
-
-            setTimeout(() => {
-
-                navigate(
-                    "/verify-email-otp",
-                    {
-                        state: {
-                            email: response.data.email
-                        }
-                    }
-                );
-
-            }, 1000);
-
+            navigate("/verify-email-otp", {
+                state: {
+                    email: registeredEmail
+                }
+            });
 
         } catch (error) {
-
             setMessage(
                 error.response?.data?.message ||
                 "Registration failed"
             );
-
         } finally {
-
             setLoading(false);
-
         }
-
     };
 
-
     return (
-
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-
             <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
 
-                {/* ==================================
-                    HEADING
-                ================================== */}
-
                 <h1 className="text-3xl font-bold text-center text-blue-600">
-
                     Create Account
-
                 </h1>
 
-
                 <p className="text-center text-gray-500 mt-2">
-
                     Join JobForge
-
                 </p>
 
-
-                {/* ==================================
-                    REGISTER FORM
-                ================================== */}
-
-                <form
-                    onSubmit={handleSubmit}
-                    className="mt-6 space-y-4"
-                >
-
-                    {/* NAME */}
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
 
                     <input
                         type="text"
@@ -140,9 +83,6 @@ function Register() {
                         required
                     />
 
-
-                    {/* EMAIL */}
-
                     <input
                         type="email"
                         name="email"
@@ -153,9 +93,6 @@ function Register() {
                         required
                     />
 
-
-                    {/* PHONE */}
-
                     <input
                         type="tel"
                         name="phone"
@@ -165,9 +102,6 @@ function Register() {
                         className="w-full border p-3 rounded-lg"
                         required
                     />
-
-
-                    {/* PASSWORD */}
 
                     <input
                         type="password"
@@ -180,88 +114,44 @@ function Register() {
                         minLength="6"
                     />
 
-
-                    {/* ROLE */}
-
                     <select
                         name="role"
                         value={formData.role}
                         onChange={handleChange}
                         className="w-full border p-3 rounded-lg"
                     >
-
-                        <option value="student">
-                            Student
-                        </option>
-
-
-                        <option value="recruiter">
-                            Recruiter
-                        </option>
-
+                        <option value="student">Student</option>
+                        <option value="recruiter">Recruiter</option>
                     </select>
-
-
-                    {/* REGISTER BUTTON */}
 
                     <button
                         type="submit"
                         disabled={loading}
                         className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                     >
-
-                        {loading
-                            ? "Creating Account..."
-                            : "Register"
-                        }
-
+                        {loading ? "Creating Account..." : "Register"}
                     </button>
-
                 </form>
 
-
-                {/* ==================================
-                    MESSAGE
-                ================================== */}
-
                 {message && (
-
                     <p className="mt-4 text-center text-sm">
-
                         {message}
-
                     </p>
-
                 )}
 
-
-                {/* ==================================
-                    LOGIN LINK
-                ================================== */}
-
                 <p className="text-center mt-6 text-gray-600">
-
                     Already have an account?{" "}
-
-
                     <Link
                         to="/login"
                         className="text-blue-600 font-semibold"
                     >
-
                         Login
-
                     </Link>
-
                 </p>
 
             </div>
-
         </div>
-
     );
-
 }
-
 
 export default Register;
