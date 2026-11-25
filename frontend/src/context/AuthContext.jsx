@@ -1,3 +1,4 @@
+
 import {
     createContext,
     useContext,
@@ -5,391 +6,189 @@ import {
     useState
 } from "react";
 
-
 import api from "../api/axios";
-
 import socket from "../socket";
-
 
 const AuthContext = createContext();
 
+// Safely retrieve stored user
+const getStoredUser = () => {
+    try {
+        const storedUser = localStorage.getItem("user");
+
+        if (
+            !storedUser ||
+            storedUser === "undefined" ||
+            storedUser === "null"
+        ) {
+            localStorage.removeItem("user");
+            return null;
+        }
+
+        return JSON.parse(storedUser);
+
+    } catch (error) {
+        console.error("Invalid stored user:", error);
+
+        localStorage.removeItem("user");
+
+        return null;
+    }
+};
+
+// Safely retrieve stored token
+const getStoredToken = () => {
+    const storedToken = localStorage.getItem("token");
+
+    if (
+        !storedToken ||
+        storedToken === "undefined" ||
+        storedToken === "null"
+    ) {
+        localStorage.removeItem("token");
+        return null;
+    }
+
+    return storedToken;
+};
 
 export const AuthProvider = ({ children }) => {
 
-    // ========================================
     // USER STATE
-    // ========================================
+    const [user, setUser] = useState(getStoredUser);
 
-    const [user, setUser] = useState(() => {
-
-        const storedUser =
-            localStorage.getItem("user");
-
-        return storedUser
-            ? JSON.parse(storedUser)
-            : null;
-
-    });
-
-
-    // ========================================
     // TOKEN STATE
-    // ========================================
+    const [token, setToken] = useState(getStoredToken);
 
-    const [token, setToken] = useState(() => {
-
-        return localStorage.getItem("token");
-
-    });
-
-
-    // ========================================
     // UNREAD NOTIFICATION COUNT
-    // ========================================
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const [unreadCount, setUnreadCount] =
-        useState(0);
-
-
-    // ========================================
-    // FETCH UNREAD NOTIFICATION COUNT
-    // ========================================
-
+    // FETCH UNREAD NOTIFICATIONS
     const fetchUnreadCount = async () => {
 
         if (!token) {
-
             setUnreadCount(0);
-
             return;
-
         }
-
 
         try {
+            const response = await api.get("/notifications");
 
-            const response =
-                await api.get(
-                    "/notifications"
-                );
-
-
-            setUnreadCount(
-                response.data.unreadCount
-            );
+            setUnreadCount(response.data.unreadCount || 0);
 
         } catch (error) {
-
-            console.error(
-                "Notification Count Error:",
-                error
-            );
-
+            console.error("Notification Count Error:", error);
         }
-
     };
 
-
-    // ========================================
     // INITIAL NOTIFICATION COUNT
-    // ========================================
-
     useEffect(() => {
 
         if (!token) {
-
             setUnreadCount(0);
-
             return;
-
         }
-
-
-        // Get existing unread notifications
-        // when user logs in or refreshes page
 
         fetchUnreadCount();
 
     }, [token]);
 
-
-    // ========================================
     // SOCKET.IO CONNECTION
-    // ========================================
-
     useEffect(() => {
 
-        // ====================================
-        // CHECK AUTHENTICATION
-        // ====================================
-
         if (!token || !user?._id) {
-
             socket.disconnect();
-
             return;
-
         }
 
-
-        // ====================================
-        // SEND JWT TO SOCKET.IO
-        // ====================================
-
-        socket.auth = {
-            token: token
-        };
-
-
-        // ====================================
-        // SOCKET CONNECTED
-        // ====================================
+        socket.auth = { token };
 
         const handleConnect = () => {
-
-            console.log(
-                "Socket connected:",
-                socket.id
-            );
-
+            console.log("Socket connected:", socket.id);
         };
 
+        const handleConnectError = (error) => {
+            console.error("Socket connection error:", error.message);
+        };
 
-        // ====================================
-        // SOCKET CONNECTION ERROR
-        // ====================================
+        const handleDisconnect = (reason) => {
+            console.log("Socket disconnected:", reason);
+        };
 
-        const handleConnectError =
-            (error) => {
+        const handleNewNotification = (notification) => {
 
-                console.error(
-                    "Socket connection error:",
-                    error.message
-                );
+            console.log("New notification:", notification);
 
-            };
+            setUnreadCount(previousCount => previousCount + 1);
+        };
 
-
-        // ====================================
-        // SOCKET DISCONNECTED
-        // ====================================
-
-        const handleDisconnect =
-            (reason) => {
-
-                console.log(
-                    "Socket disconnected:",
-                    reason
-                );
-
-            };
-
-
-        // ====================================
-        // NEW NOTIFICATION
-        // ====================================
-
-        const handleNewNotification =
-            (notification) => {
-
-                console.log(
-                    "New notification:",
-                    notification
-                );
-
-
-                // Increase badge immediately
-
-                setUnreadCount(
-                    (previousCount) =>
-                        previousCount + 1
-                );
-
-            };
-
-
-        // ====================================
-        // REGISTER EVENTS
-        // ====================================
-
-        socket.on(
-            "connect",
-            handleConnect
-        );
-
-
-        socket.on(
-            "connect_error",
-            handleConnectError
-        );
-
-
-        socket.on(
-            "disconnect",
-            handleDisconnect
-        );
-
-
-        socket.on(
-            "newNotification",
-            handleNewNotification
-        );
-
-
-        // ====================================
-        // CONNECT SOCKET
-        // ====================================
+        socket.on("connect", handleConnect);
+        socket.on("connect_error", handleConnectError);
+        socket.on("disconnect", handleDisconnect);
+        socket.on("newNotification", handleNewNotification);
 
         socket.connect();
 
-
-        // ====================================
-        // CLEANUP
-        // ====================================
-
         return () => {
 
-            socket.off(
-                "connect",
-                handleConnect
-            );
-
-
-            socket.off(
-                "connect_error",
-                handleConnectError
-            );
-
-
-            socket.off(
-                "disconnect",
-                handleDisconnect
-            );
-
-
-            socket.off(
-                "newNotification",
-                handleNewNotification
-            );
-
+            socket.off("connect", handleConnect);
+            socket.off("connect_error", handleConnectError);
+            socket.off("disconnect", handleDisconnect);
+            socket.off("newNotification", handleNewNotification);
 
             socket.disconnect();
-
         };
 
     }, [token, user?._id]);
 
-
-    // ========================================
     // LOGIN
-    // ========================================
+    const login = (newToken, newUser) => {
 
-    const login = (
-        newToken,
-        newUser
-    ) => {
+        if (!newToken || !newUser) {
+            console.error("Invalid login data");
+            return;
+        }
 
-        // Save JWT
-
-        localStorage.setItem(
-            "token",
-            newToken
-        );
-
-
-        // Save user
-
-        localStorage.setItem(
-            "user",
-            JSON.stringify(newUser)
-        );
-
-
-        // Update state
+        localStorage.setItem("token", newToken);
+        localStorage.setItem("user", JSON.stringify(newUser));
 
         setToken(newToken);
-
         setUser(newUser);
-
     };
 
-
-    // ========================================
     // LOGOUT
-    // ========================================
-
     const logout = () => {
 
-        // Remove JWT
-
-        localStorage.removeItem(
-            "token"
-        );
-
-
-        // Remove user
-
-        localStorage.removeItem(
-            "user"
-        );
-
-
-        // Disconnect Socket.IO
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
 
         socket.disconnect();
 
-
-        // Clear state
-
         setToken(null);
-
         setUser(null);
-
         setUnreadCount(0);
+
         window.location.href = "/";
     };
 
-
-    // ========================================
-    // CONTEXT PROVIDER
-    // ========================================
-
     return (
-
         <AuthContext.Provider
             value={{
-
                 user,
                 token,
-
                 login,
                 logout,
-
                 unreadCount,
                 setUnreadCount,
-
                 fetchUnreadCount
-
             }}
         >
-
             {children}
-
         </AuthContext.Provider>
-
     );
-
 };
 
-
-// ========================================
 // CUSTOM AUTH HOOK
-// ========================================
-
 export const useAuth = () => {
-
-    return useContext(
-        AuthContext
-    );
-
+    return useContext(AuthContext);
 };
