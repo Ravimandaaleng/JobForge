@@ -274,27 +274,25 @@ const registerUser = async (req, res) => {
 
             });
 
-        } catch (emailError) {
+        
+} catch (emailError) {
 
-            console.error(
-                "OTP email failed:",
-                emailError.message
-            );
+    console.error("OTP EMAIL DELIVERY FAILED:", {
+        message: emailError.message,
+        code: emailError.code,
+        response: emailError.response,
+        command: emailError.command
+    });
 
+    // Remove the unverified account if email delivery fails
+    await User.findByIdAndDelete(user._id);
 
-            await User.findByIdAndDelete(
-                user._id
-            );
+    return res.status(500).json({
+        message:
+            "Registration failed because the verification email could not be sent. Please check the email configuration and try again."
+    });
+}
 
-
-            return res.status(500).json({
-
-                message:
-                    "Registration failed because verification email could not be sent"
-
-            });
-
-        }
 
 
         return res.status(201).json({
